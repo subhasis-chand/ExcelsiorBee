@@ -1,7 +1,8 @@
 import os
 from flask_cors import CORS
-from flask import Flask, request, abort, jsonify, send_from_directory, url_for, redirect
+from flask import Flask, request, abort, jsonify, send_from_directory, url_for, redirect, render_template
 
+from src.HomePage import home_page
 from src.FileUploads import upload_input_file, get_be_file
 from src.EditFile import edit_file
 from src.LinearRegression import linear_regression
@@ -11,6 +12,10 @@ UPLOAD_DIRECTORY = "./temp/"
 
 api = Flask(__name__)
 CORS(api)
+
+@api.route('/')
+def index():
+   return render_template('Home.html')
 
 @api.route('/download/<filename>', methods=["GET", "POST"])
 def uploaded_file(filename):
