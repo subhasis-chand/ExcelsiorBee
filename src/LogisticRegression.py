@@ -1,10 +1,11 @@
 from sklearn.model_selection import train_test_split
-from sklearn.linear_model import LinearRegression
+from sklearn.linear_model import LogisticRegression
+from sklearn import metrics
 import numpy as np
 from flask import jsonify, send_from_directory
 from sklearn.metrics import mean_squared_error, r2_score
 
-def linear_regression(percenatgeTraining, shouldShuffle, opColNo, normalizeData):
+def logistic_regression(percenatgeTraining, shouldShuffle, opColNo, normalizeData):
     percenatgeTraining = int(percenatgeTraining)
     if shouldShuffle == 'true':
         shouldShuffle = True
@@ -17,10 +18,6 @@ def linear_regression(percenatgeTraining, shouldShuffle, opColNo, normalizeData)
         normalizeData = False
 
     data = np.genfromtxt('./temp/inputFile.csv', delimiter=',')
-    
-    if normalizeData:
-        maxVals = data.max(axis=0)
-        data = data / maxVals
 
     tempCol = np.copy(data[:, -1])
     data[:, -1] = np.copy(data[:, opColNo])
@@ -28,6 +25,11 @@ def linear_regression(percenatgeTraining, shouldShuffle, opColNo, normalizeData)
     
     ipData = data[:, :-1]
     opData = data[:, -1]
+
+    if normalizeData:
+        maxVals = ipData.max(axis=0)
+        maxVals[maxVals == 0] = 1
+        ipData = ipData / maxVals
     
     x_train, x_test, y_train, y_test = train_test_split(
         ipData,
@@ -36,41 +38,39 @@ def linear_regression(percenatgeTraining, shouldShuffle, opColNo, normalizeData)
         shuffle=shouldShuffle
         )
     
-    reg = LinearRegression(fit_intercept=True).fit(x_train, y_train)
+    reg = LogisticRegression(fit_intercept=True).fit(x_train, y_train)
 
     
     weight = reg.coef_
     np.savetxt('./temp/weights.csv', weight, fmt='%f')
 
     y_pred = reg.predict(x_test)
+    cm = metrics.confusion_matrix(y_test, y_pred)
 
-    rmse = mean_squared_error(y_test, y_pred)
-    r2 = r2_score(y_test, y_pred)    
+    cm_list = []
+    for i in range(cm.shape[0]):
+        cm_list.append([int(x) for x in cm[i]])
     
-    perErr = 100.0 * (np.abs(y_pred - y_test) / y_test)
+    if cm.shape == (2, 2):
+        tn, fp, fn, tp = cm.ravel()
 
-    y_pred_list = []
-    y_test_list = []
-    perErrList = []
-    for i in range(y_test.shape[0]):
-        y_pred_list.append(y_pred[i] * maxVals[-1])
-        y_test_list.append(y_test[i] * maxVals[-1])
-        perErrList.append(perErr[i])
+    accuracy = ''
+    precision = '' 
+    recall = ''
+    f1 = ''
 
-    weight_list = []
-    for w in weight:
-        weight_list.append(w)
-    
+    if cm.shape == (2, 2):
+        tn, fp, fn, tp = cm.ravel()
+        precision = tp / (tp + fp)
+        recall = tp / (tp + fn)
+        f1 = 2 * ( (precision * recall) / (precision + recall) )
+        accuracy = (tp + tn) / (tp + tn + fp + fn)
 
     return jsonify({
         'status': 'success',
-        'weights': weight_list,
-        'rmse': rmse,
-        'r2': r2,
-        'ytest': y_test_list,
-        'ypred': y_pred_list,
-        'perErr': perErrList,
-        'maxPerErr': perErr.max(),
-        'minPerErr': perErr.min(),
-        'avgPerErr': np.average(perErr)
+        'confusion_matrix': cm_list,
+        'accuracy': accuracy,
+        'precision': precision,
+        'recall': recall,
+        'f1': f1
         })

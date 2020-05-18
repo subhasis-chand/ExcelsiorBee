@@ -12,7 +12,7 @@ def edit_file(deleteCols, deleteRows, removeHeader, removeNaN, saveInBE):
     if removeNaN:
         inputFile = inputFile[~np.isnan(inputFile).any(axis=1)]
     if len(deleteCols) > 0:
-        deleteCols = deleteCols.replace(' ', '').strip(',').split(',')
+        deleteCols = deleteCols.replace(' ', '').strip(',').strip('').split(',')
         delList = []
         for i in range(len(deleteCols)):
             if int(deleteCols[i]) <= inputFile.shape[1] and int(deleteCols[i]) > 0:
@@ -26,7 +26,7 @@ def edit_file(deleteCols, deleteRows, removeHeader, removeNaN, saveInBE):
                 delList.append(int(deleteRows[i])-1)
         inputFile = np.delete(inputFile, delList, 0)
 
-    np.savetxt(UPLOAD_DIRECTORY + "inputFile.csv", inputFile, delimiter=",", fmt='%d')
+    np.savetxt(UPLOAD_DIRECTORY + "inputFile.csv", inputFile, delimiter=",")
 
     returnList = []
     for i in range(10):

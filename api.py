@@ -2,8 +2,10 @@ import os
 from flask_cors import CORS
 from flask import Flask, request, abort, jsonify, send_from_directory, url_for, redirect
 
-from src.FileUploads import upload_input_file
+from src.FileUploads import upload_input_file, get_be_file
 from src.EditFile import edit_file
+from src.LinearRegression import linear_regression
+from src.LogisticRegression import logistic_regression
 
 UPLOAD_DIRECTORY = "./temp/"
 
@@ -28,6 +30,27 @@ def EditFile():
     print(deleteCols, deleteRows, removeHeader, removeNaN, saveInBE)
     return edit_file(deleteCols, deleteRows, removeHeader, removeNaN, saveInBE)
 
+@api.route("/get_be_file/", methods=["POST"])
+def GetBEFile():
+    ip = request.remote_addr
+    return get_be_file(ip)
+
+@api.route("/linear_regression/", methods=["POST"])
+def LinearRegression():
+    percenatgeTraining = request.args.get('percenatgeTraining')
+    shouldShuffle = request.args.get('shouldShuffle')
+    opColNo = request.args.get('opColNo')
+    normalizeData = request.args.get('normalizeData')
+    return linear_regression(percenatgeTraining, shouldShuffle, opColNo, normalizeData)
+
+@api.route("/logistic_regression/", methods=["POST"])
+def LogisticRegression():
+    percenatgeTraining = request.args.get('percenatgeTraining')
+    shouldShuffle = request.args.get('shouldShuffle')
+    opColNo = request.args.get('opColNo')
+    normalizeData = request.args.get('normalizeData')
+    return logistic_regression(percenatgeTraining, shouldShuffle, opColNo, normalizeData)
+    
 
 if __name__ == "__main__":
     api.run(debug=True, port=5000)
