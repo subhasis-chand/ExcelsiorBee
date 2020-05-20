@@ -2,8 +2,7 @@ import os
 from flask_cors import CORS
 from flask import Flask, request, abort, jsonify, send_from_directory, url_for, redirect, render_template
 
-from src.HomePage import home_page
-from src.FileUploads import upload_input_file, get_be_file
+from src.FileUploads import upload_input_file, get_be_file, apply_pca
 from src.EditFile import edit_file
 from src.LinearRegression import linear_regression
 from src.LogisticRegression import logistic_regression
@@ -38,7 +37,7 @@ def EditFile():
 @api.route("/get_be_file/", methods=["POST"])
 def GetBEFile():
     ip = request.remote_addr
-    return get_be_file(ip)
+    return get_be_file('inputFile.csv')
 
 @api.route("/linear_regression/", methods=["POST"])
 def LinearRegression():
@@ -55,6 +54,13 @@ def LogisticRegression():
     opColNo = request.args.get('opColNo')
     normalizeData = request.args.get('normalizeData')
     return logistic_regression(percenatgeTraining, shouldShuffle, opColNo, normalizeData)
+
+@api.route("/apply_pca/", methods=["POST"])
+def ApplyPCA():
+    opColNo = request.args.get('opColNo')
+    keepFeatures = request.args.get('keepFeatures')
+    return apply_pca(opColNo, keepFeatures)
+
     
 
 if __name__ == "__main__":
