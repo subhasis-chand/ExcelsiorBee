@@ -7,6 +7,7 @@ from flask import jsonify, send_from_directory
 import numpy as np
 import json
 from sklearn.model_selection import train_test_split
+from sklearn import metrics
 
 def build_nn(netArr):
   class Net(nn.Module):
@@ -17,9 +18,8 @@ def build_nn(netArr):
           setattr(self, layerName, nn.Linear(int(netArr[i]['noOfNodes']), int(netArr[i+1]['noOfNodes'])))
 
     def forward(self, x):
-      #print netArr and check... The range below has some problem
-      for i in range(len(netArr) - 1):
-        layerName = 'fullyConnected' + str(i+1)
+      for i in range(1, len(netArr)):
+        layerName = 'fullyConnected' + str(i)
         layer = getattr(self, layerName)
         x = layer(x)
         if netArr[i]['activationFunction'] == 'relu':
@@ -39,16 +39,12 @@ def train_nn(percenatgeTraining, noOfEpochs, learningRate, batchSize, opColNo, s
   with open('./temp/NetworkBluePrint.json') as json_file:
     modelBluePrint = json.load(json_file)
   net = build_nn(modelBluePrint)
-  print("learning rate: ", learningRate)
   optimizer = optim.SGD(net.parameters(), lr=learningRate, momentum=0.9)
   # criterion = nn.CrossEntropyLoss()  
   criterion = nn.NLLLoss()
 
   opColNo = opColNo - 1
   data = np.genfromtxt('./temp/inputFile.csv', delimiter=',')
-  maxVals = data.max(axis=0)
-  maxVals[maxVals == 0] = 1
-  data = data / maxVals
 
   opData = data[:, opColNo]
   if opColNo == 0:
@@ -59,6 +55,10 @@ def train_nn(percenatgeTraining, noOfEpochs, learningRate, batchSize, opColNo, s
     leftData = data[:, 0: opColNo]
     rightData = data[:, opColNo + 1 : ]
     ipData = np.hstack((leftData, rightData))
+
+  maxVals = ipData.max(axis=0)
+  maxVals[maxVals == 0] = 1
+  ipData = ipData / maxVals
 
   if shouldShuffle == 'true':
     shouldShuffle = True
@@ -92,6 +92,37 @@ def train_nn(percenatgeTraining, noOfEpochs, learningRate, batchSize, opColNo, s
       else:
         endingIndex = startingIndex + batchSize
 
-  
 
-  return  jsonify({'success': 'success'})
+  ipTestingTensor = torch.from_numpy(ipTesting).float()
+  predOut = net(ipTestingTensor)
+  predOut = predOut.detach().numpy()
+  predOut = predOut.argmax(axis=1)
+  confusionMatrix = metrics.confusion_matrix(opTesting, predOut)
+
+  accuracy = ''
+  precision = '' 
+  recall = ''
+  f1 = ''
+
+  if confusionMatrix.shape == (2, 2):
+    tn, fp, fn, tp = confusionMatrix.ravel()
+    precision = tp / (tp + fp)
+    recall = tp / (tp + fn)
+    f1 = 2 * ( (precision * recall) / (precision + recall) )
+    accuracy = (tp + tn) / (tp + tn + fp + fn)
+  else:
+    correct = np.trace(confusionMatrix)
+    accuracy = correct / opTesting.shape[0] * 100
+
+  cm_list = []
+  for i in range(confusionMatrix.shape[0]):
+    cm_list.append([int(x) for x in confusionMatrix[i]])
+
+  return jsonify({
+    'status': 'success',
+    'confusion_matrix': cm_list,
+    'accuracy': accuracy,
+    'precision': precision,
+    'recall': recall,
+    'f1': f1
+    })
