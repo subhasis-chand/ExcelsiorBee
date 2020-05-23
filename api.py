@@ -1,11 +1,14 @@
 import os
+import io 
 from flask_cors import CORS
 from flask import Flask, request, abort, jsonify, send_from_directory, url_for, redirect, render_template
+import json
 
 from src.FileUploads import upload_input_file, get_be_file, apply_pca
 from src.EditFile import edit_file
 from src.LinearRegression import linear_regression
 from src.LogisticRegression import logistic_regression
+from src.NeuralNet import build_nn, train_nn
 
 UPLOAD_DIRECTORY = "./temp/"
 
@@ -31,7 +34,6 @@ def EditFile():
     removeHeader = request.args.get('removeHeader')
     removeNaN = request.args.get('removeNaN')
     saveInBE = request.args.get('saveInBE')
-    print(deleteCols, deleteRows, removeHeader, removeNaN, saveInBE)
     return edit_file(deleteCols, deleteRows, removeHeader, removeNaN, saveInBE)
 
 @api.route("/get_be_file/", methods=["POST"])
@@ -60,6 +62,27 @@ def ApplyPCA():
     opColNo = request.args.get('opColNo')
     keepFeatures = request.args.get('keepFeatures')
     return apply_pca(opColNo, keepFeatures)
+
+@api.route("/build_nn/", methods=["POST"])
+def BuildNN():
+    newArr = request.args.get('newArr')
+    networkArray = json.loads(newArr)
+    net = build_nn(networkArray)
+    f = io.StringIO()
+    print(net, file=f)
+    net_str = f.getvalue()
+    f.close()
+    return jsonify({'neuralNet': net_str })
+
+@api.route("/train_nn/", methods=["POST"])
+def TrainNN():
+    percenatgeTraining = int(request.args.get('percenatgeTraining'))
+    noOfEpochs = int(request.args.get('noOfEpochs'))
+    learningRate = float(request.args.get('learningRate'))
+    batchSize = int(request.args.get('batchSize'))
+    opColNo = int(request.args.get('opColNo'))
+    shouldShuffle = request.args.get('shouldShuffle')
+    return train_nn(percenatgeTraining, noOfEpochs, learningRate, batchSize, opColNo, shouldShuffle)
 
     
 
