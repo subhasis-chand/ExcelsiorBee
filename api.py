@@ -72,7 +72,12 @@ def BuildNN():
     print(net, file=f)
     net_str = f.getvalue()
     f.close()
-    return jsonify({'neuralNet': net_str })
+    trainableParams = sum(p.numel() for p in net.parameters() if p.requires_grad)
+    totalParams = sum(p.numel() for p in net.parameters())
+    return jsonify({
+        'neuralNet': net_str,
+        'trainableParams': trainableParams,
+        'totalParams': totalParams})
 
 @api.route("/train_nn/", methods=["POST"])
 def TrainNN():
@@ -82,7 +87,18 @@ def TrainNN():
     batchSize = int(request.args.get('batchSize'))
     opColNo = int(request.args.get('opColNo'))
     shouldShuffle = request.args.get('shouldShuffle')
-    return train_nn(percenatgeTraining, noOfEpochs, learningRate, batchSize, opColNo, shouldShuffle)
+    normalizeData = request.args.get('normalizeData')
+    lossFunction = request.args.get('lossFunction')
+    return train_nn(
+        percenatgeTraining,
+        noOfEpochs,
+        learningRate,
+        batchSize,
+        opColNo,
+        shouldShuffle,
+        normalizeData,
+        lossFunction
+        )
 
     
 

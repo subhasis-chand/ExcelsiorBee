@@ -35,13 +35,38 @@ def build_nn(netArr):
     json.dump(netArr, outfile)
   return net
 
-def train_nn(percenatgeTraining, noOfEpochs, learningRate, batchSize, opColNo, shouldShuffle):
+def train_nn(
+  percenatgeTraining,
+  noOfEpochs,
+  learningRate,
+  batchSize,
+  opColNo,
+  shouldShuffle,
+  normalizeData,
+  lossFunction
+  ):
+
+  if normalizeData == 'true':
+    normalizeData = True
+  else:
+    normalizeData = False
+
+  if shouldShuffle == 'true':
+    shouldShuffle = True
+  else:
+    shouldShuffle = False
+
   with open('./temp/NetworkBluePrint.json') as json_file:
     modelBluePrint = json.load(json_file)
   net = build_nn(modelBluePrint)
   optimizer = optim.SGD(net.parameters(), lr=learningRate, momentum=0.9)
-  # criterion = nn.CrossEntropyLoss()  
-  criterion = nn.NLLLoss()
+  
+  if lossFunction=='nll':
+    criterion = nn.CrossEntropyLoss()
+  elif lossFunction=='mse':
+    criterion = nn.MSELoss()
+  else:
+    criterion = nn.NLLLoss()
 
   opColNo = opColNo - 1
   data = np.genfromtxt('./temp/inputFile.csv', delimiter=',')
@@ -56,14 +81,11 @@ def train_nn(percenatgeTraining, noOfEpochs, learningRate, batchSize, opColNo, s
     rightData = data[:, opColNo + 1 : ]
     ipData = np.hstack((leftData, rightData))
 
-  maxVals = ipData.max(axis=0)
-  maxVals[maxVals == 0] = 1
-  ipData = ipData / maxVals
+  if normalizeData:
+    maxVals = ipData.max(axis=0)
+    maxVals[maxVals == 0] = 1
+    ipData = ipData / maxVals
 
-  if shouldShuffle == 'true':
-    shouldShuffle = True
-  else:
-    shouldShuffle = False
   percenatgeTraining = percenatgeTraining/100.0
 
   ipTraining, ipTesting, opTraining, opTesting = train_test_split(
@@ -91,10 +113,13 @@ def train_nn(percenatgeTraining, noOfEpochs, learningRate, batchSize, opColNo, s
         endingIndex = noOfRows
       else:
         endingIndex = startingIndex + batchSize
+  trainingLoss = str(loss.data.item())
 
 
   ipTestingTensor = torch.from_numpy(ipTesting).float()
   predOut = net(ipTestingTensor)
+  testingLoss = criterion(predOut, torch.from_numpy(opTesting).long())
+  testingLoss = str(testingLoss.data.item() / opTesting.shape[0] * batchSize)
   predOut = predOut.detach().numpy()
   predOut = predOut.argmax(axis=1)
   confusionMatrix = metrics.confusion_matrix(opTesting, predOut)
@@ -103,6 +128,7 @@ def train_nn(percenatgeTraining, noOfEpochs, learningRate, batchSize, opColNo, s
   precision = '' 
   recall = ''
   f1 = ''
+  correct = np.trace(confusionMatrix)
 
   if confusionMatrix.shape == (2, 2):
     tn, fp, fn, tp = confusionMatrix.ravel()
@@ -111,18 +137,20 @@ def train_nn(percenatgeTraining, noOfEpochs, learningRate, batchSize, opColNo, s
     f1 = 2 * ( (precision * recall) / (precision + recall) )
     accuracy = (tp + tn) / (tp + tn + fp + fn)
   else:
-    correct = np.trace(confusionMatrix)
     accuracy = correct / opTesting.shape[0] * 100
 
   cm_list = []
   for i in range(confusionMatrix.shape[0]):
     cm_list.append([int(x) for x in confusionMatrix[i]])
-
   return jsonify({
     'status': 'success',
     'confusion_matrix': cm_list,
     'accuracy': accuracy,
     'precision': precision,
     'recall': recall,
-    'f1': f1
+    'f1': f1,
+    'correct': str(correct),
+    'total': str(opTesting.shape[0]),
+    'trainingLoss': trainingLoss,
+    'testingLoss': testingLoss
     })
