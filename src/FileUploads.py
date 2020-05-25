@@ -23,6 +23,9 @@ def upload_input_file(filename):
     s = os.popen('head -10 temp/inputFile.csv').read()
     content = s.split('\n')[:-1]
     content = [x.split(',') for x in content]
+    for i in range(len(content)):
+        for j in range(len(content[i])):
+            content[i][j] = round(float(content[i][j]), 3)
     return jsonify({'status': 'success', 'content': content})
 
 def get_be_file(fileName):
