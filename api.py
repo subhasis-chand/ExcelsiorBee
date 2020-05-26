@@ -89,6 +89,8 @@ def TrainNN():
     shouldShuffle = request.args.get('shouldShuffle')
     normalizeData = request.args.get('normalizeData')
     lossFunction = request.args.get('lossFunction')
+    modelType = request.args.get('modelType')
+    
     return train_nn(
         percenatgeTraining,
         noOfEpochs,
@@ -97,7 +99,8 @@ def TrainNN():
         opColNo,
         shouldShuffle,
         normalizeData,
-        lossFunction
+        lossFunction,
+        modelType
         )
 
     

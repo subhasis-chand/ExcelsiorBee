@@ -43,7 +43,8 @@ def train_nn(
   opColNo,
   shouldShuffle,
   normalizeData,
-  lossFunction
+  lossFunction,
+  modelType
   ):
 
   if normalizeData == 'true':
@@ -65,17 +66,15 @@ def train_nn(
     criterion = nn.NLLLoss() # C classes
   elif lossFunction=='mse':
     criterion = nn.MSELoss() #works for both
-  else:
-    # criterion = nn.CrossEntropyLoss() #multiclasses
-    criterion = nn.BCELoss() # binary classificaion respectively
-    # criterion = nn.BCEWithLogitsLoss() # gives NaN.. handle there
-
-  #cross entropy and nll: 1d array expected
-  # Check last level activation function withh losses to find compatibility
+  elif lossFunction=='crossentropy' :
+    criterion = nn.CrossEntropyLoss() #multiclasses
+  elif lossFunction=='binarycrossentropy':
+    criterion = nn.BCELoss() # binary classificaion
+  elif lossFunction=='bcewithlogits':
+    criterion = nn.BCEWithLogitsLoss()
 
   opColNo = opColNo - 1
   data = np.genfromtxt('./temp/inputFile.csv', delimiter=',')
-  # test for mobile price classification
 
   opData = data[:, opColNo]
   if opColNo == 0:
@@ -107,8 +106,10 @@ def train_nn(
       if startingIndex == noOfRows:
         break
       ipTrainingTensor = torch.from_numpy(ipTraining[ startingIndex:endingIndex , :]).float()
-      opTrainingTensor = torch.from_numpy(np.reshape(opTraining[ startingIndex:endingIndex], (opTraining[ startingIndex:endingIndex].shape[0], 1))).float()
-      # opTrainingTensor = torch.from_numpy(opTraining[ startingIndex:endingIndex]).float()
+      if modelType=='binaryclassification':
+        opTrainingTensor = torch.from_numpy(np.reshape(opTraining[ startingIndex:endingIndex], (opTraining[ startingIndex:endingIndex].shape[0], 1))).float()
+      else:
+        opTrainingTensor = torch.from_numpy(opTraining[ startingIndex:endingIndex]).long()
       optimizer.zero_grad()
       net_out = net(ipTrainingTensor)
       loss = criterion(net_out, opTrainingTensor)
@@ -126,15 +127,20 @@ def train_nn(
 
   ipTestingTensor = torch.from_numpy(ipTesting).float()
   predOut = net(ipTestingTensor)
-  testingLoss = criterion(predOut, torch.from_numpy(np.reshape(opTesting, (opTesting.shape[0], 1))).float())
+  if modelType=='binaryclassification':
+    testingLoss = criterion(predOut, torch.from_numpy(np.reshape(opTesting, (opTesting.shape[0], 1))).float())
+  else:
+    testingLoss = criterion(predOut, torch.from_numpy(opTesting).long())
+
   testingLoss = str(testingLoss.data.item() / opTesting.shape[0] * batchSize)
   predOut = predOut.detach().numpy()
-  print(predOut, opTesting)
-  predOut[predOut < 0.5 ] = 0 # required for binary classification
-  predOut[predOut >= 0.5 ] = 1
-  # predOut = predOut.argmax(axis=1) #Multiclass classification
+  
+  if modelType=='binaryclassification':
+    predOut[predOut < 0.5 ] = 0 # required for binary classification
+    predOut[predOut >= 0.5 ] = 1
+  else:
+    predOut = predOut.argmax(axis=1) #Multiclass classification
   confusionMatrix = metrics.confusion_matrix(opTesting, predOut)
-  print("confusion matrix: ", confusionMatrix)
 
   accuracy = ''
   precision = '' 
@@ -145,9 +151,15 @@ def train_nn(
   if confusionMatrix.shape == (2, 2):
     tn, fp, fn, tp = confusionMatrix.ravel() # Handle NaN
     # send tp, tn ets to be displayed on th FE
-    precision = tp / (tp + fp)
+    precision = tp / (tp + fp)    
     recall = tp / (tp + fn)
     f1 = 2 * ( (precision * recall) / (precision + recall) )
+    if np.isnan(precision):
+      precision = 'NaN'
+    if np.isnan(recall):
+          recall = 'NaN'
+    if np.isnan(f1):
+          f1 = 'NaN'
     accuracy = (tp + tn) / (tp + tn + fp + fn)
   else:
     accuracy = correct / opTesting.shape[0] * 100

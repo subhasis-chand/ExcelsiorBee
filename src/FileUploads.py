@@ -25,7 +25,10 @@ def upload_input_file(filename):
     content = [x.split(',') for x in content]
     for i in range(len(content)):
         for j in range(len(content[i])):
-            content[i][j] = round(float(content[i][j]), 3)
+            try:
+                content[i][j] = round(float(content[i][j]), 3)
+            except:
+                pass
     return jsonify({'status': 'success', 'content': content})
 
 def get_be_file(fileName):
