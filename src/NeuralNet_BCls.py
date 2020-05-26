@@ -62,20 +62,17 @@ def train_nn(
   optimizer = optim.SGD(net.parameters(), lr=learningRate, momentum=0.9)
   
   if lossFunction=='nll':
-    criterion = nn.NLLLoss() # C classes
+    criterion = nn.NLLLoss()
   elif lossFunction=='mse':
-    criterion = nn.MSELoss() #works for both
+    criterion = nn.MSELoss()
   else:
-    # criterion = nn.CrossEntropyLoss() #multiclasses
-    criterion = nn.BCELoss() # binary classificaion respectively
-    # criterion = nn.BCEWithLogitsLoss() # gives NaN.. handle there
+    # criterion = nn.BCELoss()
+    criterion = nn.CrossEntropyLoss()
 
   #cross entropy and nll: 1d array expected
-  # Check last level activation function withh losses to find compatibility
 
   opColNo = opColNo - 1
   data = np.genfromtxt('./temp/inputFile.csv', delimiter=',')
-  # test for mobile price classification
 
   opData = data[:, opColNo]
   if opColNo == 0:
@@ -120,7 +117,6 @@ def train_nn(
         endingIndex = noOfRows
       else:
         endingIndex = startingIndex + batchSize
-  #use reduction in loss to find the avarage or total loss... Actually find avg loss and send to fe for plotting
   trainingLoss = str(loss.data.item())
 
 
@@ -130,9 +126,9 @@ def train_nn(
   testingLoss = str(testingLoss.data.item() / opTesting.shape[0] * batchSize)
   predOut = predOut.detach().numpy()
   print(predOut, opTesting)
-  predOut[predOut < 0.5 ] = 0 # required for binary classification
+  predOut[predOut < 0.5 ] = 0 #required in binary classification
   predOut[predOut >= 0.5 ] = 1
-  # predOut = predOut.argmax(axis=1) #Multiclass classification
+  # predOut = predOut.argmax(axis=1)
   confusionMatrix = metrics.confusion_matrix(opTesting, predOut)
   print("confusion matrix: ", confusionMatrix)
 
@@ -143,8 +139,7 @@ def train_nn(
   correct = np.trace(confusionMatrix)
 
   if confusionMatrix.shape == (2, 2):
-    tn, fp, fn, tp = confusionMatrix.ravel() # Handle NaN
-    # send tp, tn ets to be displayed on th FE
+    tn, fp, fn, tp = confusionMatrix.ravel()
     precision = tp / (tp + fp)
     recall = tp / (tp + fn)
     f1 = 2 * ( (precision * recall) / (precision + recall) )
