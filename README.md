@@ -20,3 +20,17 @@ pip install Flask
 ```
 
 install [pytorch](https://pytorch.org/get-started/locally/).
+
+## Start the server
+Go inside the cloned repository. After installing all the dependancies, run
+
+```bash
+python api.py
+```
+
+This command assumes that 'python' command referes to python 3. Otherwise run
+```bash
+python3 api.py
+```
+
+Warning: This application does not work on python 2.
